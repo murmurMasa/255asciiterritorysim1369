@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>領土拡大シミュレーション</title>
+<script>
+let canvas, context;                            //キャンバス
+let armyArray = new Array();                    //軍隊
+let map = new Array();                          //マップ
+const size = 15, w = 30, h = 30;                //マップサイズ
+let request = null;                             //リクエスト
+//都市データ
+const cities = [{"pos":[5,5],"alive":true,"color":"hsl(0,50%,50%)","num":0},    //都心の座標、生存フラグ、領土の色、面積
+    {"pos":[15,5],"alive":true,"color":"hsl(40,50%,50%)","num":0},
+    {"pos":[25,5],"alive":true,"color":"hsl(80,50%,30%)","num":0},
+    {"pos":[5,15],"alive":true,"color":"hsl(120,100%,30%)","num":0},
+    {"pos":[15,15],"alive":true,"color":"hsl(160,50%,50%)","num":0},
+    {"pos":[25,15],"alive":true,"color":"hsl(200,70%,50%)","num":0},
+    {"pos":[5,25],"alive":true,"color":"hsl(240,50%,70%)","num":0},
+    {"pos":[15,25],"alive":true,"color":"hsl(280,50%,50%)","num":0},
+    {"pos":[25,25],"alive":true,"color":"hsl(320,70%,70%)","num":0},] 
+
+//軍隊クラス
+class Army {
+    constructor(id, x, y) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.r = 3;                                             //軍隊を表す円の半径
+        const angle = (Math.random() * 70 + 10)/180 * Math.PI;  //移動方向
+        this.dirX = Math.cos(angle) * 2;                        //移動方向のXY増分
+
+
+
+
+
+
+    }
+}
