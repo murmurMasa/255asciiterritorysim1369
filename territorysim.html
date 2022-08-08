@@ -29,11 +29,151 @@ class Army {
         this.r = 3;                                             //軍隊を表す円の半径
         const angle = (Math.random() * 70 + 10)/180 * Math.PI;  //移動方向
         this.dirX = Math.cos(angle) * 2;                        //移動方向のXY増分
-
-
-
-
-
-
+        this.dirY = Math.sin(angle) * 2;
+    }
+    update() {
+        //移動
+        const [ox, oy] = [Math.floor(this.x/size), Math.floor(this.y/size)];    //軍隊の現在位置
+        this.x += this.dirX;
+        this.y += this.dirY;
+        let [x, y] = [Math.floor(this.x/size), Math.floor(this.y/size)];        //移動後の位置
+        if(x<0) [x, this.x] = [w-1, (w-1) * size];                              //マップの外に出たら、反対側に進む
+        if(x>w-1) [x, this.x] = [0, 0];
+        if(y<0) [y, this.y] = [h-1, (h-1) * size];
+        if(y>h-1) [x, this.y] = [0, 0];
+        if(map[x][y] != this.id) {                                              //自分の領土の外に出た時
+            if((map[x][y] > -1)&&(cities[map[x][y]].alive)) {                   //その都市が生存中のとき
+                const [cx, cy] = cities[map[x][y]].pos;
+                if((x == cx)&&(y == cy)) {                                      //他の都市（の□）に着いたとき
+                    //占領
+                    cities[map[x][y]].alive = false;
+                    for(const army of armyArray) {
+                        if(army.id == map[x][y]) {                              //占領した都市の軍隊を自分の軍隊にする
+                            army.id = this.id;
+                            army.x = cx * size;
+                            army.y = cy * size;
+                        }
+                    }
+                }
+            }
+            map[x][y] = this.id;                                                //軍隊のいる位置を自分の領土に変える
+            if(ox != x) this.dirX *= -1;                                        //移動方向を反転
+            if(oy != y) this.dirY *= -1;
+        }
+        //描画
+        context.fillStyle = cities[this.id].color;
+        context.beginPath();
+        context.arc(this.x, this.y, this.r, 0, Math.PI*2);                      //半径rの円を描く
+        context.fill();
+        context.stroke();
     }
 }
+
+const init = () => {
+    //キャンバスの取得
+    canvas = document.getElementById("map");                                    //キャンバスを取得
+    context = canvas.getContext("2d");
+    [canvas.width, canvas.height] = [w * size, h * size];                       //キャンバスの大きさを450×450に
+    //スコア欄の作成
+    const scoreList = document.getElementById("scoreList");                     //スコア欄を取得
+    for(let i=0; i<cities.length; i++) {                                        //都市の数（９）くり返し
+        const mark = document.createElement("span");
+        mark.style.color = cities[i].color;
+        mark.innerText = "■";
+        const score = document.createElement("span");                           //都市ごとのスコア表示欄を作成
+        score.id = `score_${i}`;
+        scoreList.appendChild(mark);
+        scoreList.appendChild(score);
+    }
+    //初期化
+    initMap();
+}
+
+const initMap = () => {
+    //マップの初期化
+    if (request != null) window.cancelAnimationFrame(request);                  //アニメーションをキャンセル
+    document.getElementById("start").disabled = false;                          //スタートボタンを有効化
+    map = new Array(w);
+    armyArray = [];
+    for(let x=0; x<w; x++) {                                                    //マップの大きさ（30×30）ぶんくり返し
+        map[x] = new Array(h);
+        for (let y=0; y<h; y++) {
+            map[x][y] = -1;
+        }
+    }
+    //都市、軍隊の配置
+    for(let i=0; i<cities.length; i++) {
+        cities[i].alive = true;
+        const[x,y] = cities[i].pos;
+        map[x][y] = i;                                                          //マップの各都市の座標に都市番号をセット
+        armyArray.push(new Army(i, x*size, y*size));                            //各都市の軍隊を２つ作る
+        armyArray.push(new Army(i, x*size, y*size));
+    }
+    drawMap();
+}
+
+const drawMap = () => {
+    //マップの描画
+    for(const city of cities) {
+        city.num = 0;                                               //各都市の面積を0に初期化
+    }
+    context.strokeStyle = "#CCCCCC";                                //マスの枠線の色はグレー
+    for(let x=0; x<w; x++) {
+        for(let y=0; y<h; y++) {
+            const[mx,my] = [x*size, y*size];
+            context.fillStyle = "#FFFFFF";                          //マスの色は白
+            if(map[x][y] > -1) {                                    //都市の領土があるなら
+                cities[map[x][y]].num++;                            //都市の面積に1を足す
+                context.fillStyle = cities[map[x][y]].color;
+            }
+            context.fillRect(mx, my, size, size);                   //マスを白または都市の色で描く
+            context.strokeRect(mx, my, size, size);
+        }
+    }
+    //都市の描画
+    context.strokeStyle = "#000000";                                //都市の（□の）色は黒
+    for(const city of cities) {
+        if(city.alive) {                                            //都市が生存しているとき
+            const[cx, cy] = [city.pos[0] * size, city.pos[1] * size];
+            context.strokeRect(cx+3, cy+3, size-6, size-6);         //都市□を描く
+        }
+    }
+    //スコアの表示
+    let cnt = 0, win;
+    for (let i=0; i<cities.length; i++) {
+        const score = document.getElementById(`score_${i}`);
+        score.innerText = Math.floor(cities[i].num / (w*h) * 100) +"%"; //各都市のスコアを表示
+        score.style.color = "#000000";                                  //スコアの文字の色は黒
+        if (cities[i].alive) {
+            [cnt,win] = [cnt+1, score];                                 //生存している都市を数える
+            score.style.textDecoration = "none";
+        } else {
+            score.style.textDecoration = "line-through double";         //占領された都市のスコアに二重線を引く
+        }
+    }
+    if(cnt == 1) {                                                      //生存している都市が１つしかないなら
+        win.innerText += " Win!";                                       //赤色で「Win!」と表示
+        win.style.color = "#FF0000";
+    }
+}
+
+const update = () => {
+    //マップ、軍隊の更新
+    drawMap();
+    for(const army of armyArray) {
+        army.update();                                                  //軍隊の動きなど更新
+    }
+    request = window.requestAnimationFrame(update);                     //アニメーションを行う
+    document.getElementById("start").disabled = true;
+}
+</script>
+</head>
+<body onload="init()">
+<p>領土拡大シミュレーション</p>
+<input type="button" value="リセット" onclick="initMap()">
+<input type="button" id="start" value="スタート" onclick="update()">
+<hr>
+<div id="scoreList"></div>
+<canvas id="map"></canvas>
+</body>
+</html>
